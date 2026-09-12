@@ -1,0 +1,26 @@
+# =============================================================================
+# pre-commit — automated checks before every commit
+# =============================================================================
+# One-time setup (on the Mac, online zone):
+#   uv tool install pre-commit
+#   pre-commit install
+#
+# Why: this project generates CA keys and SSH keys. An accidentally committed
+# private key would not just be embarrassing, it would void the whole PKI.
+# gitleaks and detect-private-key block that.
+# =============================================================================
+repos:
+  - repo: https://github.com/gitleaks/gitleaks
+    rev: v8.30.1
+    hooks:
+      - id: gitleaks
+
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v6.0.0
+    hooks:
+      - id: detect-private-key
+      - id: check-yaml
+      - id: end-of-file-fixer
+      - id: trailing-whitespace
+      - id: check-added-large-files
+        args: ["--maxkb=1024"]   # stops accidentally committed bundles

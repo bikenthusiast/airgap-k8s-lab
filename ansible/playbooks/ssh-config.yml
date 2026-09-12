@@ -1,0 +1,33 @@
+---
+# =============================================================================
+# ssh-config.yml — generates .ssh-config in the repository root
+# =============================================================================
+# Why:
+#   Once the VMs are sealed, "vagrant ssh" no longer works because Vagrant uses
+#   the (disconnected) NAT adapter. The only remaining path is the data diode:
+#   Mac -> infra (host-only) -> cluster nodes (ProxyJump).
+#
+#   This file is used by humans (ssh -F .ssh-config cp1) AND by Ansible (via
+#   ANSIBLE_SSH_ARGS in the Makefile), so both share one access path.
+#
+# Runs locally on the Mac and needs no connection to the VMs.
+# =============================================================================
+- name: Generate the SSH configuration for bastion access
+  hosts: localhost
+  connection: local
+  gather_facts: false
+
+  vars:
+    repo_root: "{{ playbook_dir | dirname | dirname }}"
+
+  tasks:
+    - name: Exactly one bastion is defined
+      ansible.builtin.assert:
+        that: groups['bastion'] | length == 1
+        fail_msg: "The inventory must contain exactly one host in group 'bastion'."
+
+    - name: Render .ssh-config from the inventory
+      ansible.builtin.template:
+        src: templates/ssh-config.j2
+        dest: "{{ repo_root }}/.ssh-config"
+        mode: "0600"

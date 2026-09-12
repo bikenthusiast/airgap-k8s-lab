@@ -1,0 +1,60 @@
+# =============================================================================
+# versions.yaml — single source of truth for all versions and architectures
+# =============================================================================
+# Rule: every component that enters the air gap is pinned here.
+#       Nothing is ever pulled as "latest". Changing this file is a deliberate
+#       decision and belongs in its own commit.
+#
+# Consumed by:
+#   - Vagrantfile             (Vagrant box)
+#   - bundle/ (planned, M3)   (what gets downloaded and packed into the bundle)
+#   - ansible/ (planned, M5)  (what gets installed on the nodes)
+#
+# Version research date: 2026-09-11 (upstream Git tags).
+# Resolve every item marked "VERIFY" before the first bundle build.
+# =============================================================================
+
+schema_version: 1
+
+platform:
+  # Lab on the Intel Mac = amd64, later Raspberry Pi 5 hardware = arm64.
+  # The bundle carries both architectures from day one (ADR-0009).
+  architectures: [amd64, arm64]
+  os:
+    distribution: ubuntu
+    release: "24.04"
+    codename: noble
+  vagrant_box:
+    name: bento/ubuntu-24.04
+    version: "202510.26.0"      # deliberately pinned; an update is its own commit
+    architecture: amd64
+
+kubernetes:
+  # N-1 strategy (ADR-0007): install one minor version below current so that
+  # the offline upgrade (M6) is a real exercise rather than a claim.
+  install_version: "1.36.4"
+  upgrade_target: "1.37.0"      # VERIFY before M6: pick the latest 1.37 patch
+  pod_cidr: "10.244.0.0/16"
+  service_cidr: "10.96.0.0/12"
+  cluster_domain: "cluster.local"
+
+container_runtime:
+  containerd: "2.3.5"
+  runc: "1.5.1"
+  cni_plugins: "1.9.1"
+  crictl: "1.36.0"              # tracks the Kubernetes minor version
+
+cni:
+  name: cilium
+  version: "1.20.1"             # VERIFY: support matrix against K8s 1.36 and 1.37
+
+registry:
+  product: zot                  # ADR-0004
+  version: "2.1.21"
+
+tooling:
+  # Tools for the online zone (Mac) and for operating the air-gapped side
+  helm: "4.3.0"                 # VERIFY: Cilium chart with Helm 4, else pin Helm 3
+  skopeo: "1.24.0"
+  crane: "0.22.1"
+  step_cli: "0.30.6"

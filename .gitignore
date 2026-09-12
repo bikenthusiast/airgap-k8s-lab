@@ -1,0 +1,36 @@
+# =============================================================================
+# .gitignore
+# =============================================================================
+# Top rule: no key material and no credentials in the repository.
+# The pre-commit hook (gitleaks) scans every commit on top of this.
+# =============================================================================
+
+# --- Vagrant / VirtualBox: holds the private SSH keys of the VMs -------------
+.vagrant/
+
+# --- Generated files ---------------------------------------------------------
+.ssh-config
+.airgap-audit.log
+
+# --- Bundle: large and reproducible from versions.yaml -----------------------
+bundle/out/
+*.tar
+*.tar.gz
+*.tar.zst
+*.oci
+
+# --- PKI: never commit private keys or CA databases --------------------------
+pki/out/
+pki/**/private/
+*.key
+*-key.pem
+*.p12
+*.pfx
+*.srl
+*.csr
+
+# --- Tooling / operating system ----------------------------------------------
+*.retry
+__pycache__/
+.venv/
+.DS_Store

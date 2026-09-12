@@ -1,0 +1,63 @@
+---
+# =============================================================================
+# verify-airgap.yml — guest-side air-gap proof (ADR-0008)
+# =============================================================================
+# Principle: a negative test without a positive control proves nothing. When
+# the report says "internet unreachable", it must also show that the network
+# works at all and that the test itself actually ran.
+#
+#   Positive control   nodes can reach each other on the air-gap network
+#   Negative test 1    no IP egress (bypasses DNS, targets a raw IP)
+#   Negative test 2    no external name resolution
+#   Negative test 3    upstream registry unreachable
+#   Bypass check       the bastion does not forward packets
+#
+# "scripts/airgap.sh status" covers the host side; "make verify" runs both.
+# =============================================================================
+- name: Prove the air gap on every node
+  hosts: all
+  gather_facts: false
+
+  vars:
+    egress_probe_ip: 1.1.1.1
+    egress_probe_host: registry.k8s.io
+    probe_timeout: 5
+
+  tasks:
+    - name: "Positive control | bastion reachable on the air-gap network"
+      ansible.builtin.command:
+        cmd: "ping -c 2 -W 2 {{ hostvars[groups['bastion'][0]].airgap_ip }}"
+      changed_when: false
+
+    - name: "Negative test 1 | no IP egress to {{ egress_probe_ip }}"
+      ansible.builtin.command:
+        cmd: "curl -sS --max-time {{ probe_timeout }} -o /dev/null https://{{ egress_probe_ip }}"
+      register: egress_ip
+      failed_when: egress_ip.rc == 0
+      changed_when: false
+
+    - name: "Negative test 2 | no external name resolution ({{ egress_probe_host }})"
+      ansible.builtin.command:
+        cmd: "timeout 10 getent hosts {{ egress_probe_host }}"
+      register: egress_dns
+      failed_when: egress_dns.rc == 0
+      changed_when: false
+
+    - name: "Negative test 3 | {{ egress_probe_host }} unreachable over HTTPS"
+      ansible.builtin.command:
+        cmd: "curl -sS --max-time {{ probe_timeout }} -o /dev/null https://{{ egress_probe_host }}"
+      register: egress_registry
+      failed_when: egress_registry.rc == 0
+      changed_when: false
+
+    - name: "Bypass check | bastion does not forward packets"
+      ansible.builtin.command:
+        cmd: sysctl -n net.ipv4.ip_forward
+      register: ip_forward
+      failed_when: ip_forward.stdout | trim != "0"
+      changed_when: false
+      when: inventory_hostname in groups['bastion']
+
+    - name: Result
+      ansible.builtin.debug:
+        msg: "Air-gap proof passed for {{ inventory_hostname }}"
