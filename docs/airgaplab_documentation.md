@@ -466,7 +466,7 @@ for vm in infra cp1 w1 w2; do echo "== $vm"; VBoxManage snapshot "airgap-lab-$vm
 
 ## 7. Verification
 
-Two check scripts in the repo, run from the Mac. Run both after every failure-injection exercise and after restoring `clean-os`.
+Two check scripts in the repo, run from the Mac. Run both after every failure-injection exercise and after restoring `clean-os`. Both first query each VM's power state via `VBoxManage showvminfo` (`running`, `poweroff`, `saved`, `aborted`, …) and skip nodes that aren't running instead of reporting them as network failures. `check-connectivity.sh` exits with 1 and `RESULT: INCOMPLETE` if not all four VMs run.
 
 | Script | Checks | Pass criterion |
 |---|---|---|

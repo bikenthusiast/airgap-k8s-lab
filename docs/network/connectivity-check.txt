@@ -1,4 +1,10 @@
-airgap-lab connectivity check — 2026-10-19 14:31
+airgap-lab connectivity check — 2026-10-19 15:16
+
+VM state:
+  airgap-lab-infra   running
+  airgap-lab-cp1     running
+  airgap-lab-w1      running
+  airgap-lab-w2      running
 
 from \ to         airgap-lab-infra  airgap-lab-cp1    airgap-lab-w1     airgap-lab-w2     mac(10.10.10.100) 
 airgap-lab-infra  -                 ok                ok                ok                ok                
