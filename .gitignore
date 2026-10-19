@@ -1,0 +1,27 @@
+# --- PKI: whole folder except its README ---
+pki/*
+!pki/README.md
+
+# --- keys and certificates, wherever they are ---
+*.key
+*.pem
+*.crt
+*.cer
+*.csr
+*.srl
+*.p12
+*.pfx
+*.jks
+
+# --- Kubernetes credentials ---
+*.kubeconfig
+kubeconfig
+admin.conf
+
+# --- other secrets ---
+.env
+*.secret
+*token*
+
+# --- macOS ---
+.DS_Store
