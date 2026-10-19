@@ -1,0 +1,15 @@
+airgap-lab connectivity check — 2026-10-19 14:31
+
+from \ to         airgap-lab-infra  airgap-lab-cp1    airgap-lab-w1     airgap-lab-w2     mac(10.10.10.100) 
+airgap-lab-infra  -                 ok                ok                ok                ok                
+airgap-lab-cp1    ok                -                 ok                ok                ok                
+airgap-lab-w1     ok                ok                -                 ok                ok                
+airgap-lab-w2     ok                ok                ok                -                 ok                
+
+Internet access (expected: only airgap-lab-infra reachable):
+  airgap-lab-infra   reachable
+  airgap-lab-cp1     blocked
+  airgap-lab-w1      blocked
+  airgap-lab-w2      blocked
+
+RESULT: all node-to-node pings ok
