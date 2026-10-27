@@ -25,3 +25,7 @@ admin.conf
 
 # --- macOS ---
 .DS_Store
+
+# --- exceptions: public lab CA material in pki/ is tracked on purpose ---
+!pki/*.crt
+!pki/*.cnf
