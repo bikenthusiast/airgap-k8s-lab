@@ -83,3 +83,11 @@ Last connectivity result: [`connectivity-check.txt`](connectivity-check.txt)
 2. Set the node IP explicitly (`--apiserver-advertise-address`, kubelet `--node-ip`) and add a blackhole default route
 
 To be decided in the kubeadm phase.
+
+## Decision: default route for cp1, w1, w2 (2026-10-27)
+
+- **Chosen:** default route via `airgap-lab-infra` (10.10.10.10), set in `/etc/netplan/01-airgap-lab.yaml`.
+- **Why:** kubeadm and the kubelet pick the node address from the default route; without one, address detection fails.
+- **Air gap still holds:** infra has `net.ipv4.ip_forward = 0`, so traffic to the internet ends on infra.
+- **Verified:** `curl https://1.1.1.1` from w1 → timeout (exit 28); `curl https://registry.k8s.io` → no DNS (exit 6).
+- **Side effect:** internet access from nodes fails slowly (timeout) instead of immediately.
