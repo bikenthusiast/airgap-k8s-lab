@@ -1,6 +1,6 @@
 # Kubernetes cluster (kubeadm)
 
-Status 2026-10-28: control plane on cp1 initialized, CNI (Flannel) installed, cp1 `Ready`; w1/w2 join and first workload follow (part 2).
+Status 2026-10-28: 3 nodes `Ready` (cp1 control plane, w1, w2 workers), CNI Flannel, workload tests passed, snapshot `cluster-ok` taken on all four VMs — baseline for the failure exercises.
 
 ## Versions
 
@@ -17,8 +17,8 @@ Status 2026-10-28: control plane on cp1 initialized, CNI (Flannel) installed, cp
 | Node | IP | Role | CPU / RAM |
 |---|---|---|---|
 | airgap-lab-cp1 | 10.10.10.11 | control plane | 2 / ~3.4 GB |
-| airgap-lab-w1 | 10.10.10.21 | worker (joins in part 2) | 2 / 3 GB |
-| airgap-lab-w2 | 10.10.10.22 | worker (joins in part 2) | 2 / 3 GB |
+| airgap-lab-w1 | 10.10.10.21 | worker (joined 2026-10-28) | 2 / 3 GB |
+| airgap-lab-w2 | 10.10.10.22 | worker (joined 2026-10-28) | 2 / 3 GB |
 
 ## Networks
 
@@ -50,8 +50,8 @@ kubeadm and the kubelet pick their address from the default route; both are ther
 | Node | podCIDR |
 |---|---|
 | airgap-lab-cp1 | 10.244.0.0/24 |
-| airgap-lab-w1 | assigned on join (expected 10.244.1.0/24) |
-| airgap-lab-w2 | assigned on join (expected 10.244.2.0/24) |
+| airgap-lab-w1 | 10.244.1.0/24 |
+| airgap-lab-w2 | 10.244.2.0/24 |
 
 Check: `kubectl get nodes -o custom-columns='NAME:.metadata.name,PODCIDR:.spec.podCIDR,FLANNEL-IP:.metadata.annotations.flannel\.alpha\.coreos\.com/public-ip'` — `FLANNEL-IP` must be the node address, otherwise the tunnels point to the wrong host although the node is `Ready`.
 
@@ -61,6 +61,41 @@ Check: `kubectl get nodes -o custom-columns='NAME:.metadata.name,PODCIDR:.spec.p
 - **Interim fix (2026-10-28):** `forward` block removed from the `coredns` ConfigMap (backup on cp1: `~/coredns-backup.yaml`), `kubectl replace`, `rollout restart`. Both CoreDNS pods `1/1 Running`.
 - Side effect: at start the `loop` plugin logs once `HINFO: plugin/loop: no next plugin found` (its self-test query has no plugin left to answer it). Harmless. Names outside the cluster fail immediately with `SERVFAIL`.
 - **Planned permanent fix:** internal DNS on infra (dnsmasq, zone `lab.internal`), CoreDNS `forward . 10.10.10.10`.
+
+## Joining workers
+
+```bash
+JOIN=$(ssh airgap-lab-cp1 kubeadm token create --print-join-command --kubeconfig .kube/config)
+ssh -t airgap-lab-w1 "sudo $JOIN --node-name airgap-lab-w1"
+ssh -t airgap-lab-w2 "sudo $JOIN --node-name airgap-lab-w2"
+unset JOIN
+```
+
+- `--node-ip` is set in `/etc/default/kubelet` **before** the join (by `node-prep.sh`); the first registration fixes the node's `INTERNAL-IP`.
+- Join tokens are valid 24 h and are secrets: never in the repo, journal or result files.
+
+## Workload tests (2026-10-28)
+
+| Test | How | Result |
+|---|---|---|
+| Image from the lab registry | `kubectl run test-registry --image=airgap-lab-infra:5000/library/busybox:1.37 …`, image name points to the lab registry explicitly | `Running` on a worker; Events: `Successfully pulled image "airgap-lab-infra:5000/library/busybox:1.37"` ✔ |
+| Scheduling | control plane taint `node-role.kubernetes.io/control-plane:NoSchedule` | test pods land on w1/w2 only ✔ |
+| Pod to pod across nodes | `p1` pinned to w1, `p2` pinned to w2 (`nodeName`), `kubectl exec p1 -- ping -c 3 <p2-ip>` | 0 % packet loss ✔ |
+| Large packets | `ping -s 1400` (just below the pod MTU) | 0 % packet loss ✔ |
+| Pod MTU | `kubectl exec p1 -- ip link show eth0` | `mtu 1450` (VXLAN overhead 50 bytes) ✔ |
+| Cluster DNS | `kubectl exec p1 -- nslookup kubernetes.default.svc.cluster.local` | answered by CoreDNS `10.96.0.10` → `10.96.0.1` ✔ |
+| External names | `nslookup google.com` from a pod | fails immediately (no `forward` in the Corefile) — intended in the air gap |
+
+Test pods were deleted afterwards. Application image list: [`../registry/images-apps.txt`](../registry/images-apps.txt).
+
+`Ready` nodes alone do not prove pod-to-pod traffic across nodes; the cross-node ping is the real check for the overlay.
+
+## Snapshot `cluster-ok`
+
+- Taken 2026-10-28 on **all four VMs** (infra, cp1, w1, w2), powered off.
+- Shutdown order: w1, w2 → cp1 → infra. Start order: infra → cp1 → w1, w2.
+- After restart: 3× `Ready`, all pods `Running`.
+- **Baseline for every failure exercise** (Defekt catalog). Always restore the snapshot on all VMs together: a single VM on an older state no longer matches what etcd on cp1 knows about it.
 
 ## Node preparation
 
