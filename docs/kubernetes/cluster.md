@@ -1,6 +1,6 @@
 # Kubernetes cluster (kubeadm)
 
-Status 2026-10-28: control plane on cp1 initialized; w1/w2 join, CNI and first workload follow (part 2).
+Status 2026-10-28: control plane on cp1 initialized, CNI (Flannel) installed, cp1 `Ready`; w1/w2 join and first workload follow (part 2).
 
 ## Versions
 
@@ -9,6 +9,7 @@ Status 2026-10-28: control plane on cp1 initialized; w1/w2 join, CNI and first w
 | Kubernetes (kubeadm, kubelet, kubectl) | v1.37.1 — package `1.37.1-1.1` from `pkgs.k8s.io/core:/stable:/v1.37`, `apt-mark hold` |
 | containerd | 2.2.2 (`2.2.2-0ubuntu1.2`), runc from the Ubuntu archive |
 | OS / kernel | Ubuntu 26.04.1 LTS, `7.0.0-38-generic` |
+| CNI | Flannel v0.28.10 (VXLAN backend), see [CNI](#cni) |
 | Control plane images | `registry.k8s.io/…` v1.37.1, etcd `3.7.0-0`, CoreDNS `v1.14.6`, pause `3.10.2` (mirrored, see [`../registry/images-v1.37.1.txt`](../registry/images-v1.37.1.txt)) |
 
 ## Nodes
@@ -30,6 +31,36 @@ Status 2026-10-28: control plane on cp1 initialized; w1/w2 join, CNI and first w
 | Default route | via infra 10.10.10.10, which does not forward → air gap holds (see [`../network/network-plan.md`](../network/network-plan.md)) |
 
 kubeadm and the kubelet pick their address from the default route; both are therefore set explicitly: `--apiserver-advertise-address` on `kubeadm init`, `--node-ip` via `/etc/default/kubelet`.
+
+## CNI
+
+| | |
+|---|---|
+| Plugin | **Flannel** v0.28.10, manifest `kube-flannel.yml` from the GitHub release (pinned version, not `latest`) |
+| Why Flannel | one manifest, few images, low RAM; default network 10.244.0.0/16 = `--pod-network-cidr`, so the manifest is used unchanged. Trade-off: no NetworkPolicy support (Calico would be the option for policy exercises) |
+| Backend | VXLAN overlay: pod traffic between nodes is wrapped in UDP between node addresses → pod MTU **1450** (1500 − 50 bytes) |
+| Interface | picked from the default route → `enp0s3` (lab network) |
+| Images | `flannel-io/flannel:v0.28.10`, `flannel-io/flannel-cni-plugin:v1.9.1-flannel3` ([`../registry/images-flannel-v0.28.10.txt`](../registry/images-flannel-v0.28.10.txt)), mirrored with skopeo: `ghcr.io/X` → `airgap-lab-infra:5000/X` |
+| Mirror | `/etc/containerd/certs.d/ghcr.io/hosts.toml` on every node (added to [`scripts/node-prep.sh`](../../scripts/node-prep.sh) on 2026-10-28) |
+| Deployed as | DaemonSet `kube-flannel-ds` in namespace `kube-flannel`, one pod per node, `hostNetwork: true` (pod IP = node IP) |
+| On the node | `/etc/cni/net.d/10-flannel.conflist`, interfaces `flannel.1` (VXLAN tunnel) and `cni0` (bridge for local pods) |
+
+### Pod CIDR per node
+
+| Node | podCIDR |
+|---|---|
+| airgap-lab-cp1 | 10.244.0.0/24 |
+| airgap-lab-w1 | assigned on join (expected 10.244.1.0/24) |
+| airgap-lab-w2 | assigned on join (expected 10.244.2.0/24) |
+
+Check: `kubectl get nodes -o custom-columns='NAME:.metadata.name,PODCIDR:.spec.podCIDR,FLANNEL-IP:.metadata.annotations.flannel\.alpha\.coreos\.com/public-ip'` — `FLANNEL-IP` must be the node address, otherwise the tunnels point to the wrong host although the node is `Ready`.
+
+### CoreDNS in the air gap
+
+- After the pod network came up, CoreDNS went into `CrashLoopBackOff`: `plugin/forward: no valid upstream addresses found`. The Corefile forwards non-cluster names to the node's `/etc/resolv.conf`, which has no nameserver in the air gap.
+- **Interim fix (2026-10-28):** `forward` block removed from the `coredns` ConfigMap (backup on cp1: `~/coredns-backup.yaml`), `kubectl replace`, `rollout restart`. Both CoreDNS pods `1/1 Running`.
+- Side effect: at start the `loop` plugin logs once `HINFO: plugin/loop: no next plugin found` (its self-test query has no plugin left to answer it). Harmless. Names outside the cluster fail immediately with `SERVFAIL`.
+- **Planned permanent fix:** internal DNS on infra (dnsmasq, zone `lab.internal`), CoreDNS `forward . 10.10.10.10`.
 
 ## Node preparation
 

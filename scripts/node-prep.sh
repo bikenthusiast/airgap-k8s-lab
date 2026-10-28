@@ -28,14 +28,18 @@ sed -i 's/SystemdCgroup = false/SystemdCgroup = true/' "$CFG"
 sed -i -E "s#^(\s*)sandbox = .*#\1sandbox = 'registry.k8s.io/pause:${PAUSE_TAG}'#" "$CFG"
 sed -i -E "s#^(\s*)config_path = ''#\1config_path = '/etc/containerd/certs.d'#" "$CFG"
 
-# 3. Mirror: pull registry.k8s.io images from the lab registry
-install -d /etc/containerd/certs.d/registry.k8s.io
-cat > /etc/containerd/certs.d/registry.k8s.io/hosts.toml <<HOSTS
-server = "https://registry.k8s.io"
+# 3. Mirrors: pull images of these upstream registries from the lab registry.
+#    Image paths stay the same (registry.k8s.io/X -> ${REG}/X), so manifests need no changes.
+#    registry.k8s.io: Kubernetes control plane, pause; ghcr.io: Flannel CNI
+for upstream in registry.k8s.io ghcr.io; do
+  install -d "/etc/containerd/certs.d/${upstream}"
+  cat > "/etc/containerd/certs.d/${upstream}/hosts.toml" <<HOSTS
+server = "https://${upstream}"
 
 [host."https://${REG}"]
   capabilities = ["pull", "resolve"]
 HOSTS
+done
 
 # 4. crictl talks to containerd
 cat > /etc/crictl.yaml <<'CRI'
@@ -51,4 +55,5 @@ echo "KUBELET_EXTRA_ARGS=--node-ip=${NODE_IP}" > /etc/default/kubelet
 # 6. Show what matters
 echo "--- containerd"; grep -nE 'SystemdCgroup|sandbox = |config_path' "$CFG"
 echo "--- sysctl";     sysctl net.ipv4.ip_forward net.bridge.bridge-nf-call-iptables
+echo "--- mirrors";    ls /etc/containerd/certs.d/
 echo "--- kubelet";    cat /etc/default/kubelet
