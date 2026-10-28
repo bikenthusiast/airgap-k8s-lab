@@ -35,3 +35,5 @@ Every VM has a snapshot `clean-os` (freshly configured OS) to reset to after fai
 
 - No private keys or certificates in this repo: they live in `pki/`, which is excluded via `.gitignore`.
 - Every failure exercise gets an entry in the error journal: hypothesis → diagnosis → what I missed and why.
+
+![airgap-lab overview](docs/architecture/airgap-lab-overview.svg)
