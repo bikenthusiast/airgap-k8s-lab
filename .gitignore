@@ -26,6 +26,9 @@ admin.conf
 # --- macOS ---
 .DS_Store
 
+# --- personal helper scripts (lab_up.sh, lab_down.sh), kept local ---
+/utilities/
+
 # --- exceptions: public lab CA material in pki/ is tracked on purpose ---
 !pki/*.crt
 !pki/*.cnf

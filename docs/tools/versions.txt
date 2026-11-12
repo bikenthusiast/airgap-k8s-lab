@@ -1,0 +1,30 @@
+== airgap-lab-cp1
+7.0.0-38-generic
+bpftrace 0.25.0-1ubuntu1
+fio 3.41-2
+linux-tools-common 7.0.0-38.38
+lsof 4.99.4+dfsg-2build2
+strace 6.19+ds-0ubuntu5
+stress-ng 0.20.01-1
+sysstat 12.7.7-0ubuntu2
+tcpdump 4.99.6-1
+== airgap-lab-w1
+7.0.0-38-generic
+bpftrace 0.25.0-1ubuntu1
+fio 3.41-2
+linux-tools-common 7.0.0-38.38
+lsof 4.99.4+dfsg-2build2
+strace 6.19+ds-0ubuntu5
+stress-ng 0.20.01-1
+sysstat 12.7.7-0ubuntu2
+tcpdump 4.99.6-1
+== airgap-lab-w2
+7.0.0-38-generic
+bpftrace 0.25.0-1ubuntu1
+fio 3.41-2
+linux-tools-common 7.0.0-38.38
+lsof 4.99.4+dfsg-2build2
+strace 6.19+ds-0ubuntu5
+stress-ng 0.20.01-1
+sysstat 12.7.7-0ubuntu2
+tcpdump 4.99.6-1
