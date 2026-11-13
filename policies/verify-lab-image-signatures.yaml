@@ -1,0 +1,47 @@
+apiVersion: policies.kyverno.io/v1
+kind: ImageValidatingPolicy
+metadata:
+  name: verify-lab-image-signatures
+  annotations:
+    policies.kyverno.io/description: >-
+      Pods in namespace supply-chain-demo may only run images from
+      airgap-lab-infra:5000/demo/* that are signed with the lab cosign key.
+spec:
+  webhookConfiguration:
+    timeoutSeconds: 30
+  evaluation:
+    background:
+      enabled: false
+  validationActions: [Deny]
+  failurePolicy: Fail
+  matchConstraints:
+    namespaceSelector:
+      matchLabels:
+        kubernetes.io/metadata.name: supply-chain-demo
+    resourceRules:
+    - apiGroups: ['']
+      apiVersions: ['v1']
+      operations: ['CREATE', 'UPDATE']
+      resources: ['pods']
+  matchImageReferences:
+  - glob: 'airgap-lab-infra:5000/demo/*'
+  validationConfigurations:
+    mutateDigest: true
+    verifyDigest: true
+    required: true
+  attestors:
+  - name: cosign
+    cosign:
+      key:
+        data: |
+          -----BEGIN PUBLIC KEY-----
+          MFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAEHaRQWzDfCeJPBXi4xM3vURQlNCwj
+          4PpRUzOm8y/nHpz2WYX2Qkq/moeZH/NbSwq+vr2UBCCOgj/NgQKsB6dA2g==
+          -----END PUBLIC KEY-----
+      ctlog:
+        insecureIgnoreTlog: true
+        insecureIgnoreSCT: true
+  validations:
+  - expression: >-
+      images.containers.map(image, verifyImageSignatures(image, [attestors.cosign])).all(e, e > 0)
+    message: image is not signed with the lab cosign key

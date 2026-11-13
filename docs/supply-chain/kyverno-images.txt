@@ -1,0 +1,5 @@
+reg.kyverno.io/kyverno/background-controller:v1.20.0
+reg.kyverno.io/kyverno/cleanup-controller:v1.20.0
+reg.kyverno.io/kyverno/kyvernopre:v1.20.0
+reg.kyverno.io/kyverno/kyverno:v1.20.0
+reg.kyverno.io/kyverno/reports-controller:v1.20.0

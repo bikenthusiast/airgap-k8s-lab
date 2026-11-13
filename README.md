@@ -37,3 +37,7 @@ Every VM has a snapshot `clean-os` (freshly configured OS) to reset to after fai
 - Every failure exercise gets an entry in the error journal: hypothesis → diagnosis → what I missed and why.
 
 ![airgap-lab overview](docs/architecture/airgap-lab-overview.svg)
+
+## Supply-chain controls
+
+All workload images are mirrored, signed by digest with cosign, carry an SPDX SBOM attestation, and are verified at admission by Kyverno (`ImageValidatingPolicy`), fully offline. Failure testing showed the policy webhook fails open on graceful shutdown; findings and mitigations in [docs/supply-chain/supply-chain.md](docs/supply-chain/supply-chain.md).

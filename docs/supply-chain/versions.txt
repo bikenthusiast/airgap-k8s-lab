@@ -1,0 +1,1 @@
+cosign v2.6.5  syft v1.57.1  kyverno v1.20.0
